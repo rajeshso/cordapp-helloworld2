@@ -1,12 +1,10 @@
 ![Corda](https://www.corda.net/wp-content/uploads/2016/11/fg005_corda_b.png)
 
-# CorDapp Template
+# CorDapp Hello World IOU
 
-Welcome to the CorDapp template. The CorDapp template is a stubbed-out CorDapp 
-which you can use to bootstrap your own CorDapp projects.
+Welcome to the CorDapp Hello World IOS. 
 
-**This is the KOTLIN version of the CorDapp template. For the JAVA version click 
-[here](https://github.com/corda/cordapp-template-java/).**
+The use case can be found ![here](https://docs.corda.net/releases/release-M14.0/hello-world-introduction.html) 
 
 ## Pre-Requisites
 
@@ -27,11 +25,11 @@ Corda docsite.
 
 To get started, clone this repository with:
 
-     git clone https://github.com/corda/cordapp-template-kotlin.git
+     git clone https://github.com/corda/cordapp-helloworld2.git
 
 And change directories to the newly cloned repo:
 
-     cd cordapp-template-kotlin
+     cd cordapp-helloworld2
 
 ### Releases
 
@@ -47,7 +45,7 @@ When building from the latest SNAPSHOT release you must also clone the master
 branch of the [corda repository](https://github.com/corda/corda) and then run `./gradlew install`
 to build the dependencies required for this template.
 ​     
-## Building the CorDapp template:
+## Building the CorDapp Hello Wolrd2:
 
 **Unix:** 
 
@@ -58,7 +56,7 @@ to build the dependencies required for this template.
      gradlew.bat deployNodes
 
 Note: You'll need to re-run this build step after making any changes to
-the template for these to take effect on the node.
+the program for these to take effect on the node.
 
 ## Running the Nodes
 
@@ -75,6 +73,8 @@ run the nodes with:
 
      ./runnodes --log-to-console --logging-level=DEBUG
 
+     ./runnodes
+     
 **Windows:**
 
     runnodes.bat --log-to-console --logging-level=DEBUG
@@ -86,6 +86,25 @@ When the nodes have booted up, you should see a message like the following
 in the console: 
 
      Node started up and registered in 5.007 sec
+
+## Interacting with the Shell
+
+This is the easiest and the preferred way to interact
+
+The nodes can be found using the following port numbers, defined in 
+`build.gradle`, as well as the `node.conf` file for each node found
+under `build/nodes/partyX`:
+
+     PartyA: flow list
+             flow watch
+             flow start Initiator otherParty: PartyB
+             
+     PartyB: localhost:10010
+            flow watch
+
+As the nodes start up, they should tell you which host and port their
+embedded web server is running on. The API endpoints served are:
+
 
 ## Interacting with the CorDapp via HTTP
 

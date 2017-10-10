@@ -1,6 +1,6 @@
-package com.template.flow
+package com.helloworld.flow
 
-import com.template.Responder
+import com.helloworld.IOUFlow
 import net.corda.node.internal.StartedNode
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetwork.MockNode
@@ -20,7 +20,7 @@ class FlowTests {
         a = nodes.partyNodes[0]
         b = nodes.partyNodes[1]
         nodes.partyNodes.forEach {
-            it.registerInitiatedFlow(Responder::class.java)
+            it.registerInitiatedFlow(IOUFlow::class.java)
         }
         net.runNetwork()
     }

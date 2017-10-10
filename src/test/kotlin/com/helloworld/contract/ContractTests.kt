@@ -1,4 +1,4 @@
-package com.template.contract
+package com.helloworld.contract
 
 import org.junit.Test
 
