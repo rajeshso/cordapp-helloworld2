@@ -9,9 +9,11 @@ import net.corda.core.identity.Party
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.serialization.SerializationWhitelist
 import net.corda.core.transactions.LedgerTransaction
+import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.webserver.services.WebServerPluginRegistry
+import java.util.Arrays.asList
 import java.util.function.Function
 import javax.ws.rs.GET
 import javax.ws.rs.Path
@@ -66,10 +68,13 @@ open class IOUContract : Contract {
             */
             "transactions’s output IOU state - Its value must be non-negative" using (outputStateTx.value > 0)
             "transactions’s output IOU state - The lender and the borrower cannot be the same entity" using (outputStateTx.lender != outputStateTx.borrower)
-            "transactions’s output IOU state - The IOU’s lender must sign the transaction - firstly, a signer should be present" using (command.signers.toSet().size == 1)
+            "transactions’s output IOU state - The IOU’s lender must sign the transaction - firstly, a signer should be present" using (command.signers.toSet().size == 2)
             "transactions’s output IOU state - The IOU’s lender must sign the transaction" using (command.signers.contains(outputStateTx.lender.owningKey))
-        }
 
+            //Two Party Flows
+            "transactions involving an IOUState require the borrower’s signature (as well as the lender’s) to become valid ledger updates" using (command.signers.toSet().size == 2)
+            "the borrowers and lenders must be signers" using (command.signers.containsAll(listOf(outputStateTx.borrower.owningKey, outputStateTx.lender.owningKey)))
+        }
     }
 
     val legalContractReference = SecureHash.zeroHash
@@ -104,20 +109,44 @@ class IOUFlow(val iouValue: Int, val otherParty: Party) : FlowLogic<Unit>() {
         // We create a transaction builder
         val txBuilder = TransactionBuilder(notary = notary)
         // We add the items to the builder
-        val state = IOUState(lender = me, borrower = otherParty, value = iouValue)
+        val outputState = IOUState(lender = me, borrower = otherParty, value = iouValue)
         //val outputContract = IOUContract::class.jvmName
-        val command = Command(IOUContract.Create(), me.owningKey)
+        val command = Command(IOUContract.Create(), listOf(me.owningKey, otherParty.owningKey))
         txBuilder
                 .addCommand(command)
-                .addOutputState(state, IOU_CONTRACT_ID)
+                .addOutputState(outputState, IOU_CONTRACT_ID)
 
         // Verifying the transaction
         txBuilder.verify(serviceHub)
         // Signing the transaction
-        val signedTx = serviceHub.signInitialTransaction(txBuilder)
+        val partiallySignedTx = serviceHub.signInitialTransaction(txBuilder)
+
+        //Two party Flow - the lender requires the borrower’s agreement before they can issue an IOU onto the ledger.
+        // Create session with other party
+        val session = initiateFlow(otherParty)
+        // Obtain the counter party's signature
+        val fullySignedTx = subFlow(CollectSignaturesFlow(partiallySignedTx= partiallySignedTx, sessionsToCollectFrom= listOf(session), progressTracker = CollectSignaturesFlow.tracker()))
+
         // Finalizing the transaction
-        subFlow(FinalityFlow(signedTx))
+        subFlow(FinalityFlow(fullySignedTx))
         Unit
+    }
+}
+
+@InitiatedBy(IOUFlow::class)
+class IOUFlowResponder(val otherSideSession: FlowSession) : FlowLogic<Unit>() {
+    override fun call() {
+        //create an object of SignTransactionFlow
+        val signTxFlow = object : SignTransactionFlow(otherSideSession= otherSideSession,
+                progressTracker = SignTransactionFlow.tracker()) {
+            override fun checkTransaction(stx: SignedTransaction) = requireThat {
+                val output = stx.tx.outputs.single().data
+                "This should be a valid iou state only" using (output is IOUState)
+                val iou = output as IOUState
+                "The iouValue should not be too high" using (iou.value < 100)
+            }
+        }
+        subFlow(signTxFlow)
     }
 }
 
